@@ -5,7 +5,7 @@ import { touchSession } from "../lib/session.js";
 import Generator from "./Generator.jsx";
 import Backup from "./Backup.jsx";
 import { matchItems } from "../lib/match.js";
-import { fillLoginForm } from "../lib/fill.js";
+import { fillItemOnTab } from "../lib/autofill.js";
 
 const emptyForm = { site: "", username: "", password: "" };
 
@@ -26,19 +26,9 @@ export default function Vault({ vault, setVault, cryptoKey, onLock }) {
     const matches = tab?.url ? matchItems(vault.items, tab.url) : [];
 
     async function handleFill(item) {
-        if (!isHttps && !window.confirm("This page is not HTTPS. Fill anyway?"))
-            return;
-        try {
-            const [res] = await chrome.scripting.executeScript({
-                target: { tabId: tab.id },
-                func: fillLoginForm,
-                args: [item.username, item.password],
-            });
-            if (!res?.result?.ok)
-                alert(res?.result?.reason || "Could not fill.");
-        } catch {
-            alert("Cannot fill on this page (browser pages are not allowed).");
-        }
+        const result = await fillItemOnTab(item, tab);
+        if (!result.ok || result.waiting) alert(result.message);
+        if (result.ok && !result.waiting) window.close();
     }
 
     const filtered = vault.items.filter((i) => {
