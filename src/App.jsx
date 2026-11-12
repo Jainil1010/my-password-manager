@@ -1,7 +1,4 @@
 import { useEffect, useState } from "react";
-import Vault from "./components/Vault.jsx";
-import CreateVault from "./components/CreateVault.jsx";
-import Unlock from "./components/Unlock.jsx";
 import { openVaultWithKey, vaultExists } from "./lib/vault.js";
 import {
     getSession,
@@ -14,6 +11,8 @@ import { ShieldCheck } from "lucide-react";
 import { VaultProvider } from "./state/VaultContext.jsx";
 import { MemoryRouter } from "react-router";
 import AppRoutes from "./AppRoutes.jsx";
+import CreateVaultScreen from "./screens/CreateVaultScreen.jsx";
+import UnlockScreen from "./screens/UnlockScreen.jsx";
 
 export default function App() {
     const [status, setStatus] = useState("loading");
@@ -57,8 +56,12 @@ export default function App() {
                     <ShieldCheck size={60} />
                 </div>
             )}
-            {status === "create" && <CreateVault onCreated={handleUnlocked} />}
-            {status === "unlock" && <Unlock onUnlocked={handleUnlocked} />}
+            {status === "create" && (
+                <CreateVaultScreen onCreated={handleUnlocked} />
+            )}
+            {status === "unlock" && (
+                <UnlockScreen onUnlocked={handleUnlocked} />
+            )}
             {status === "unlocked" && (
                 <VaultProvider
                     initialVault={currentSession.vault}
