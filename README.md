@@ -2,6 +2,6 @@
 
 A simple password manager. Your data is encrypted and stays on your device.
 
-Currently working on improving UI and fixing password fill issues on some websites.
+Currently working on improving UI.
 
 Will update README.md in future once the project is ready.
