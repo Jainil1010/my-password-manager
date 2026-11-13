@@ -1,6 +1,6 @@
 import { Navigate, useNavigate, useParams } from "react-router";
 import { useToast } from "../ui/Toast";
-import { useActivateTab } from "../lib/useActivateTab";
+import { useActiveTab } from "../lib/useActiveTab";
 import { useVault } from "../state/VaultContext";
 import { useState } from "react";
 import { matchItems } from "../lib/match";
@@ -29,7 +29,7 @@ export default function ItemDetailScreen() {
     const { id } = useParams();
     const navigate = useNavigate();
     const toast = useToast();
-    const tab = useActivateTab();
+    const tab = useActiveTab();
     const { getItem, deleteItem } = useVault();
     const [showPassword, setShowPassword] = useState(false);
     const [confirmOpen, setConfirmOpen] = useState(false);

@@ -49,7 +49,9 @@ export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
                 await persist({
                     ...vault,
                     items: vault.items.map((i) =>
-                        i.id === id ? { ...i, data, updatedAt: Date.now() } : i,
+                        i.id === id
+                            ? { ...i, ...data, updatedAt: Date.now() }
+                            : i,
                     ),
                 });
             },

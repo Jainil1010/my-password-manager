@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router";
 import { useVault } from "../state/VaultContext";
 import { useToast } from "../ui/Toast";
-import { useActivateTab } from "../lib/useActivateTab";
+import { useActiveTab } from "../lib/useActiveTab";
 import { useMemo, useState } from "react";
 import { matchItems } from "../lib/match";
 import { itemName } from "../lib/items";
@@ -15,7 +15,7 @@ export default function HomeScreen() {
     const { items } = useVault();
     const navigate = useNavigate();
     const toast = useToast();
-    const tab = useActivateTab();
+    const tab = useActiveTab();
     const [query, setQuery] = useState("");
     const suggestions = useMemo(
         () => (tab?.url ? matchItems(items, tab.url) : []),

@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-export function useActivateTab() {
+export function useActiveTab() {
     const [tab, setTab] = useState(null);
     useEffect(() => {
         chrome.tabs
