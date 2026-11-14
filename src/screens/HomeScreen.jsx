@@ -10,6 +10,7 @@ import { KeyRound, Plus, Search, Settings } from "lucide-react";
 import IconButton from "../ui/IconButton";
 import ItemRow from "../ui/ItemRow";
 import Button from "../ui/Button";
+import { useEscape } from "../ui/useEscape";
 
 export default function HomeScreen() {
     const { items } = useVault();
@@ -17,6 +18,7 @@ export default function HomeScreen() {
     const toast = useToast();
     const tab = useActiveTab();
     const [query, setQuery] = useState("");
+    useEscape(query !== '', () => setQuery(''))
     const suggestions = useMemo(
         () => (tab?.url ? matchItems(items, tab.url) : []),
         [items, tab],

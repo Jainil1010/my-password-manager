@@ -2,7 +2,7 @@ import { Navigate, useNavigate, useParams } from "react-router";
 import { useToast } from "../ui/Toast";
 import { useActiveTab } from "../lib/useActiveTab";
 import { useVault } from "../state/VaultContext";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { hostFromSite } from "../lib/items";
 import ScreenHeader from "../ui/ScreenHeader";
 import Input from "../ui/Input";
@@ -11,6 +11,8 @@ import { Sparkles } from "lucide-react";
 import Button from "../ui/Button";
 import Sheet from "../ui/Sheet";
 import GeneratorPanel from "../ui/GeneratorPanel";
+import { useEscape } from "../ui/useEscape";
+import ConfirmDialog from "../ui/ConfirmDialog";
 
 export default function ItemFormScreen() {
     const { id } = useParams();
@@ -30,12 +32,18 @@ export default function ItemFormScreen() {
     const [errors, setErrors] = useState({});
     const [saving, setSaving] = useState(false);
     const [genOpen, setGenOpen] = useState(false);
+    const initialRef = useRef(form);
+    const dirty = JSON.stringify(form) !== JSON.stringify(initialRef.current);
+    const [discardOpen, setDiscardOpen] = useState(false);
+    useEscape(dirty, () => setDiscardOpen(true));
 
     useEffect(() => {
-        if (!isEdit && tab?.url && /^https?:\/\//i.test(tab.url))
-            setForm((f) =>
-                f.site ? f : { ...f, site: hostFromSite(tab.url) },
-            );
+        if (!isEdit && tab?.url && /^https?:\/\//i.test(tab.url)) {
+            const host = hostFromSite(tab.url);
+            setForm((f) => (f.site ? f : { ...f, site: host }));
+            if (!initialRef.current.site)
+                initialRef.current = { ...initialRef.current, site: host };
+        }
     }, [isEdit, tab]);
 
     if (isEdit && !existing) return <Navigate to="/" replace />;
@@ -73,7 +81,10 @@ export default function ItemFormScreen() {
 
     return (
         <div className="flex h-full animate-fade-in flex-col">
-            <ScreenHeader title={isEdit ? "Edit login" : "New login"} />
+            <ScreenHeader
+                title={isEdit ? "Edit login" : "New login"}
+                escapeBack={!dirty}
+            />
             <form
                 onSubmit={handleSubmit}
                 className="flex min-h-0 flex-1 flex-col">
@@ -143,6 +154,15 @@ export default function ItemFormScreen() {
                     }}
                 />
             </Sheet>
+            <ConfirmDialog
+                open={discardOpen}
+                title="Discard changes?"
+                message="You have unsaved changes on this login."
+                confirmLabel="Discard"
+                danger
+                onConfirm={() => navigate(-1)}
+                onCancle={() => setDiscardOpen(false)}
+            />
         </div>
     );
 }

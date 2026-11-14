@@ -1,9 +1,16 @@
 import { useNavigate } from "react-router";
 import IconButton from "./IconButton";
 import { ChevronLeft } from "lucide-react";
+import { useEscape } from "./useEscape";
 
-export default function ScreenHeader({ title, back = true, actions }) {
+export default function ScreenHeader({
+    title,
+    back = true,
+    escapeBack = true,
+    actions,
+}) {
     const navigate = useNavigate();
+    useEscape(back && escapeBack, () => navigate(-1));
     return (
         <header className="flex h-14 shrink-0 items-center gap-1 border-b border-line px-2">
             {back && (
