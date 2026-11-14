@@ -25,6 +25,7 @@ export default function ItemFormScreen() {
     const [form, setForm] = useState({
         title: existing?.title || "",
         site: existing?.site || "",
+        extraSites: (existing?.extraSites || []).join("\n"),
         username: existing?.username || "",
         password: existing?.password || "",
         notes: existing?.notes || "",
@@ -63,6 +64,10 @@ export default function ItemFormScreen() {
                 ...form,
                 title: form.title.trim(),
                 site: form.site.trim(),
+                extraSites: form.extraSites
+                    .split("\n")
+                    .map((s) => s.trim())
+                    .filter(Boolean),
                 username: form.username.trim(),
             };
             if (isEdit) {
@@ -103,6 +108,18 @@ export default function ItemFormScreen() {
                         error={errors.site}
                         autoFocus={!isEdit}
                     />
+                    <label className="block">
+                        <span className="mb-1 block text-xs font-medium text-muted">
+                            Also use on these websites (one per line)
+                        </span>
+                        <textarea
+                            rows={2}
+                            placeholder={"login.live.com\nmicrosoftonline.com"}
+                            value={form.extraSites}
+                            onChange={set("extraSites")}
+                            className="w-full resize-none rounded-xl border border-line bg-surface px-3 py-2.5 text-sm outline-none placeholder:text-muted/60 focus:border-brand"
+                        />
+                    </label>
                     <Input
                         label="Username or email"
                         value={form.username}

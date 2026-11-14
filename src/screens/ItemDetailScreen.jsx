@@ -146,6 +146,9 @@ export default function ItemDetailScreen() {
                     }>
                     {hostFromSite(item.site)}
                 </Field>
+                {item.extraSites?.length > 0 && (
+                    <Field label='Also used on'>{item.extraSites.join(', ')}</Field>
+                )}
                 {item.notes && (
                     <div className="rounded-xl bg-surface px-3 py-2.5">
                         <p className="text-xs text-muted">Notes</p>
