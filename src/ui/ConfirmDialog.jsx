@@ -1,4 +1,5 @@
 import Button from "./Button";
+import { useEscape } from "./useEscape";
 
 export default function ConfirmDialog({
     open,
@@ -9,6 +10,7 @@ export default function ConfirmDialog({
     onConfirm,
     onCancle,
 }) {
+    useEscape(open, onCancle);
     if (!open) return null;
     return (
         <div

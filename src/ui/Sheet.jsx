@@ -1,7 +1,9 @@
 import { X } from "lucide-react";
 import IconButton from "./IconButton";
+import { useEscape } from "./useEscape";
 
 export default function Sheet({ open, title, onClose, children }) {
+    useEscape(open, onClose)
     if (!open) return null;
     return (
         <div
