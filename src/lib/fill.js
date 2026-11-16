@@ -1,6 +1,6 @@
 export function smartFill(username, password) {
     const POLL_MS = 300;
-    const MAX_WAIT_MS = 60000;
+    const MAX_WAIT_MS = 120000;
     const USER_HINT = /user|e-?mail|login|identifier|account|phone/i;
 
     const isVisible = (el) => {
@@ -79,32 +79,47 @@ export function smartFill(username, password) {
         );
     };
 
-    const pwField = findPassword();
-    const userField = findUsername(pwField);
-    if (userField && username) setValue(userField, username);
-    if (pwField) {
-        setValue(pwField, password);
-        return { ok: true, filled: userField ? "both" : "password" };
-    }
-    if (!userField)
-        return { ok: false, reason: "No login fields found on this page." };
-    if (window.__pmFillTimer) clearInterval(window.__pmFillTimer);
+    const doneUsernames = new WeakSet();
+    const attempt = () => {
+        const pwField = findPassword();
+        const userField = findUsername(pwField);
+        let filledUser = false;
+        if (userField && username && !doneUsernames.has(userField)) {
+            setValue(userField, username);
+            doneUsernames.add(userField);
+            filledUser = true;
+        }
+        if (pwField) {
+            setValue(pwField, password);
+            return {
+                done: true,
+                pwField,
+                filled: userField ? "both" : "password",
+            };
+        }
+        return { dont: false, filled: filledUser ? "username" : null };
+    };
+
+    const stop = () => {
+        clearInterval(window.__pmFillTimer);
+        window.__pmFillTimer = null;
+    };
+
+    stop();
+    const first = attempt();
+    if (first.done) return { ok: true, filled: first.filled };
+
     const startedAt = Date.now();
     window.__pmFillTimer = setInterval(() => {
-        const field = findPassword();
-        if (field) {
-            clearInterval(window.__pmFillTimer);
-            window.__pmFillTimer = null;
-            setValue(field, password);
+        const next = attempt();
+        if (next.done) {
+            stop();
             setTimeout(() => {
-                if (field.isConnected && field.value !== password)
-                    setValue(field, password);
+                if (next.pwField.isConnected && next.pwField.value !== password)
+                    setValue(next.pwField, password);
             }, 400);
-        } else if (Date.now() - startedAt > MAX_WAIT_MS) {
-            clearInterval(window.__pmFillTimer);
-            window.__pmFillTimer = null;
-        }
+        } else if (Date.now() - startedAt > MAX_WAIT_MS) stop();
     }, POLL_MS);
 
-    return { ok: true, filled: "username", waiting: true };
+    return { ok: true, waiting: true, filled: first.filled || "nothing" };
 }

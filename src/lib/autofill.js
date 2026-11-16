@@ -26,13 +26,10 @@ export async function fillItemOnTab(item, tab) {
                 ok: false,
                 message: result?.reason || "Could not fill this page.",
             };
-        if (result.waiting)
-            return {
-                ok: true,
-                waiting: true,
-                message:
-                    "Username filled. Click Next and the password will fill automatically.",
-            };
+        if (result.waiting) {
+            const message = result.filled === 'nothing' ? 'Ready. Choose your account (or "Use another account") and it will fill when the field appears.' : 'Username filled. Click Next and the password will fill automatically.'
+            return { ok: true, waiting: true, message }
+        }
         return { ok: true, message: "Filled" };
     } catch {
         return { ok: false, message: "Cannot fill on this page." };
