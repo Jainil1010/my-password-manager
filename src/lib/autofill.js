@@ -1,4 +1,3 @@
-import { smartFill } from "./fill";
 import { isSecurePage } from "./match";
 
 export async function fillItemOnTab(item, tab) {
@@ -15,23 +14,28 @@ export async function fillItemOnTab(item, tab) {
                 "This pgae is not secure (no HTTPS). Autofill is turned off here.",
         };
     try {
-        const [res] = await chrome.scripting.executeScript({
-            target: { tabId: tab.id },
-            func: smartFill,
-            args: [item.username || "", item.password],
+        const result = await chrome.tabs.sendMessage(tab.id, {
+            type: "FILL_CREDENTIALS",
+            username: item.username || "",
+            password: item.password,
         });
-        const result = res?.result;
         if (!result?.ok)
             return {
                 ok: false,
                 message: result?.reason || "Could not fill this page.",
             };
         if (result.waiting) {
-            const message = result.filled === 'nothing' ? 'Ready. Choose your account (or "Use another account") and it will fill when the field appears.' : 'Username filled. Click Next and the password will fill automatically.'
-            return { ok: true, waiting: true, message }
+            const message =
+                result.filled === "nothing"
+                    ? 'Ready. Choose your account (or "Use another account") and it will fill when the field appears.'
+                    : "Username filled. Click Next and the password will fill automatically.";
+            return { ok: true, waiting: true, message };
         }
         return { ok: true, message: "Filled" };
     } catch {
-        return { ok: false, message: "Cannot fill on this page." };
+        return {
+            ok: false,
+            message: "Cannot reach this page. Reload the page and try again.",
+        };
     }
 }
