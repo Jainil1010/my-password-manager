@@ -29,6 +29,8 @@ async function handleMessage(msg, sender) {
             return getSuggestions(pageUrl);
         case "GET_CREDENTIALS":
             return getCredentials(pageUrl, msg.itemId);
+        case "OPEN_POPUP":
+            return openPopup();
         default:
             return { ok: false };
     }
@@ -58,4 +60,13 @@ async function getCredentials(pageUrl, itemId) {
     if (!item) return { ok: false };
     touchSession();
     return { ok: true, username: item.username || "", password: item.password };
+}
+
+async function openPopup() {
+    try {
+        await chrome.action.openPopup();
+        return { ok: true };
+    } catch {
+        return { ok: false };
+    }
 }

@@ -1,5 +1,6 @@
-import { detectInlineFields, fillCredentials } from "../lib/fields";
-import { buildNote, createOverlay } from "./overlay";
+import { fillCredentials, detectInlineFields } from "../lib/fields";
+import { createOverlay, buildRow, buildNote } from "./overlay";
+import { send } from "./messaging";
 
 const isSecureHere = () =>
     location.protocol === "https:" || location.hostname === "localhost";
@@ -9,13 +10,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (!isSecureHere()) return;
     if (msg?.type === "PING")
         sendResponse({ ok: true, host: location.hostname });
-    if (msg?.type === "FILL_CREDENTIALS")
+    if (msg?.type === "FILL_CREDENTIALS") {
         sendResponse(
             fillCredentials(
                 String(msg.username || ""),
                 String(msg.password || ""),
             ),
         );
+    }
 });
 
 if (isSecureHere() && window.top === window) start();
@@ -23,11 +25,51 @@ if (isSecureHere() && window.top === window) start();
 function start() {
     let overlay = null;
     const getOverlay = () => (overlay ??= createOverlay());
+    async function onIconClick(field) {
+        const o = getOverlay();
+        o.openMenu(field, [buildNote("Loading...")]);
+        const res = await send({ type: "GET_SUGGESTIONS" });
+        if (!res?.ok) {
+            return o.openMenu(field, [
+                buildNote("Password Manager is not available on this page."),
+            ]);
+        }
+        if (res.locked) {
+            return o.openMenu(field, [
+                buildRow({
+                    name: "Unlock Password Manager",
+                    sub: "Open the extension to unlock",
+                    onSelect: unlock,
+                }),
+            ]);
+        }
+        if (res.items.length === 0) {
+            return o.openMenu(field, [
+                buildNote("No saved logins for this site."),
+            ]);
+        }
+        o.openMenu(
+            field,
+            res.items.map((item) =>
+                buildRow({
+                    name: item.name,
+                    sub: item.username || "No username",
+                    onSelect: () => pick(item.id),
+                }),
+            ),
+        );
+    }
 
-    function onIconClick(field) {
-        getOverlay().openMenu(field, [
-            buildNote("The icon works! Suggestions come next."),
-        ]);
+    async function pick(itemId) {
+        overlay.closeMenu();
+        const creds = await send({ type: "GET_CREDENTIALS", itemId });
+        if (!creds?.ok) return;
+        fillCredentials(creds.username, creds.password);
+    }
+
+    async function unlock() {
+        overlay.closeMenu();
+        await send({ type: "OPEN_POPUP" });
     }
 
     function scan() {
@@ -35,5 +77,24 @@ function start() {
         if (fields.length === 0 && !overlay) return;
         getOverlay().syncFields(fields, onIconClick);
     }
+
+    let scanScheduled = false;
+    function scheduleScan() {
+        if (scanScheduled) return;
+        scanScheduled = true;
+        setTimeout(() => {
+            scanScheduled = false;
+            scan();
+        }, 400);
+    }
+
+    new MutationObserver(scheduleScan).observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ["style", "class", "hidden", "type"],
+    });
+    window.addEventListener("focusin", scheduleScan, true);
+
     scan();
 }
