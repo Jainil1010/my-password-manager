@@ -1,6 +1,8 @@
 import { fillCredentials, detectInlineFields } from "../lib/fields";
 import { createOverlay, buildRow, buildNote } from "./overlay";
 import { send } from "./messaging";
+import { loadSettings } from "../lib/settings";
+import { startCapture } from "./capture";
 
 const isSecureHere = () =>
     location.protocol === "https:" || location.hostname === "localhost";
@@ -22,9 +24,20 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
 
 if (isSecureHere() && window.top === window) start();
 
-function start() {
+async function start() {
+    let settings = await loadSettings();
     let overlay = null;
     const getOverlay = () => (overlay ??= createOverlay());
+
+    chrome.storage.onChanged.addListener((changes, area) => {
+        if (area === "local" && changes.settings) {
+            loadSettings().then((s) => {
+                settings = s;
+                scan();
+            });
+        }
+    });
+
     async function onIconClick(field) {
         const o = getOverlay();
         o.openMenu(field, [buildNote("Loading...")]);
@@ -73,7 +86,7 @@ function start() {
     }
 
     function scan() {
-        const fields = detectInlineFields();
+        const fields = settings.inlineSuggestions ? detectInlineFields() : [];
         if (fields.length === 0 && !overlay) return;
         getOverlay().syncFields(fields, onIconClick);
     }
@@ -96,5 +109,6 @@ function start() {
     });
     window.addEventListener("focusin", scheduleScan, true);
 
+    startCapture({ getOverlay, getSettings: () => settings });
     scan();
 }

@@ -1,7 +1,7 @@
 import { getDomain, getHostname } from "tldts";
 import { expandKey } from "./related.js";
 
-function siteKey(value) {
+export function siteKey(value) {
     if (!value) return null;
     return getDomain(value) || getHostname(value);
 }

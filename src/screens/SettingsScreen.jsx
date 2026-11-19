@@ -2,7 +2,7 @@ import { useNavigate } from "react-router";
 import { useToast } from "../ui/Toast";
 import { useVault } from "../state/VaultContext";
 import { useEffect, useRef, useState } from "react";
-import { loadSettings, saveSettings } from "../lib/settings";
+import { DEFAULT_SETTINGS, loadSettings, saveSettings } from "../lib/settings";
 import { removeSession, touchSession } from "../lib/session";
 import { exportBackup, importBackup } from "../lib/backup";
 import { removeData } from "../lib/storage";
@@ -17,6 +17,7 @@ import {
     Upload,
 } from "lucide-react";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import Switch from "../ui/Switch";
 
 const AUTO_LOCK_OPTIONS = [
     [1, "1 minute"],
@@ -67,15 +68,20 @@ export default function SettingsScreen() {
     const [autoLock, setAutoLock] = useState(5);
     const [pendingFile, setPendingFile] = useState(null);
     const [eraseOpen, setEraseOpen] = useState(false);
+    const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+    const [clearNeverOpen, setClearNeverOpen] = useState(false);
 
     useEffect(() => {
-        loadSettings().then((s) => setAutoLock(s.autoLockMinutes));
+        loadSettings().then(setSettings);
     }, []);
 
+    async function update(partial) {
+        setSettings((s) => ({ ...s, ...partial }));
+        await saveSettings(partial);
+    }
+
     async function changeAutoLock(e) {
-        const minutes = Number(e.target.value);
-        setAutoLock(minutes);
-        await saveSettings({ autoLockMinutes: minutes });
+        await update({ autoLockMinutes: Number(e.target.value) });
         await touchSession();
         toast("Auto-lock updated");
     }
@@ -115,7 +121,7 @@ export default function SettingsScreen() {
                         hint="Lock after no activity"
                         right={
                             <select
-                                value={autoLock}
+                                value={settings.autoLockMinutes}
                                 onChange={changeAutoLock}
                                 className="rounded-lg bg-raised px-2 py-1.5 text-xs outline-none">
                                 {AUTO_LOCK_OPTIONS.map(([value, label]) => (
@@ -127,6 +133,49 @@ export default function SettingsScreen() {
                         }
                     />
                     <Row icon={Lock} label="Lock now" onClick={lock} />
+                </Group>
+                <Group title="Autofill">
+                    <Row
+                        label="Inline suggestions"
+                        hint="Show a key icon in login fields"
+                        right={
+                            <Switch
+                                label="Inline suggestions"
+                                checked={settings.inlineSuggestions}
+                                onChange={(v) =>
+                                    update({ inlineSuggestions: v })
+                                }
+                            />
+                        }
+                    />
+                    <Row
+                        label="Offer to save logins"
+                        hint="Ask after you sign in"
+                        right={
+                            <Switch
+                                label="Offer to save logins"
+                                checked={settings.offerToSave}
+                                onChange={(v) => update({ offerToSave: v })}
+                            />
+                        }
+                    />
+                    <Row
+                        label="Never save list"
+                        hint={`${settings.neverSaveSites.length} site(s). Tap to clear`}
+                        onClick={() =>
+                            settings.neverSaveSites.length > 0 &&
+                            setClearNeverOpen(true)
+                        }
+                    />
+                    <Row
+                        label="Keyboard shortcut"
+                        hint="Fill the login on this page. Tap to change it"
+                        onClick={() =>
+                            chrome.tabs.create({
+                                url: "chrome://extensions/shortcuts",
+                            })
+                        }
+                    />
                 </Group>
                 <Group title="Tools">
                     <Row
@@ -202,6 +251,18 @@ export default function SettingsScreen() {
                 danger
                 onConfirm={handleErase}
                 onCancle={() => setEraseOpen(false)}
+            />
+            <ConfirmDialog
+                open={clearNeverOpen}
+                title="Clear the never-save list?"
+                message="We will offer to save logins on these sites again."
+                confirmLabel="Clear"
+                onConfirm={async () => {
+                    await update({ neverSaveSites: [] });
+                    setClearNeverOpen(false);
+                    toast("List cleared");
+                }}
+                onCancle={() => setClearNeverOpen(false)}
             />
         </div>
     );

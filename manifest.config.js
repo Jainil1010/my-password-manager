@@ -2,10 +2,7 @@ import { defineManifest } from "@crxjs/vite-plugin";
 
 export default defineManifest(({ mode }) => {
     const dev = mode === "development";
-    const matches = [
-        "https://*/*",
-        ...defineManifest(dev ? ["http://localhost/*"] : []),
-    ];
+    const matches = ["https://*/*", ...(dev ? ["http://localhost/*"] : [])];
     return {
         manifest_version: 3,
         name: "My Password Manager",

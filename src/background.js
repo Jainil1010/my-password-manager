@@ -1,8 +1,11 @@
 import { ALARM_NAME, SESSION_KEY } from "./lib/constants";
 import { getUnlockedVault } from "./lib/vaultAccess";
-import { matchItems, isSecurePage } from "./lib/match";
+import { matchItems, isSecurePage, siteKey } from "./lib/match";
 import { itemName } from "./lib/items";
 import { touchSession } from "./lib/session";
+import { clearPending, getPending, setPending } from "./lib/pending";
+import { loadSettings, saveSettings } from "./lib/settings";
+import { saveVault } from "./lib/vault";
 
 chrome.alarms.onAlarm.addListener((alarm) => {
     if (alarm.name === ALARM_NAME) chrome.storage.session.remove(SESSION_KEY);
@@ -23,11 +26,14 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
     if (command === "fill-login") await fillBestMatch(tab);
 });
 
+chrome.tabs.onRemoved.addListener((tabId) => clearPending(tabId));
+
 async function handleMessage(msg, sender) {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0)
         return { ok: false };
     const pageUrl = sender.url;
     if (!pageUrl || !isSecurePage(pageUrl)) return { ok: false };
+    const tabId = sender.tab.id;
     switch (msg?.type) {
         case "GET_SUGGESTIONS":
             return getSuggestions(pageUrl);
@@ -35,6 +41,17 @@ async function handleMessage(msg, sender) {
             return getCredentials(pageUrl, msg.itemId);
         case "OPEN_POPUP":
             return openPopup();
+        case "LOGIN_CAPTURED":
+            return loginCaptured(pageUrl, tabId, msg);
+        case "GET_PENDING_SAVE":
+            return getPendingSave(tabId);
+        case "SAVE_PENDING":
+            return savePending(tabId);
+        case "DISMISS_PENDING":
+            await clearPending(tabId);
+            return { ok: true };
+        case "NEVER_SAVE":
+            return neverSave(tabId);
         default:
             return { ok: false };
     }
@@ -106,4 +123,97 @@ async function flash(text) {
     await chrome.action.setBadgeBackgroundColor({ color: "#6d4aff" });
     await chrome.action.setBadgeText({ text });
     setTimeout(() => chrome.action.setBadgeText({ text: "" }), 2000);
+}
+
+async function loginCaptured(pageUrl, tabId, msg) {
+    const password = typeof msg.password === "string" ? msg.password : "";
+    const username =
+        typeof msg.username === "string"
+            ? msg.username.trim().slice(0, 256)
+            : "";
+    if (!password || password.length > 1024) return { ok: true };
+    const settings = await loadSettings();
+    const key = siteKey(pageUrl);
+    if (!settings.offerToSave || !key || settings.neverSaveSites.includes(key))
+        return { ok: true };
+    const unlocked = await getUnlockedVault();
+    if (!unlocked) return { ok: true };
+    const sameLogin = matchItems(unlocked.vault.items, pageUrl).find(
+        (i) => (i.username || "").toLowerCase() === username.toLowerCase(),
+    );
+    if (sameLogin && sameLogin.password === password) return { ok: true };
+    await setPending(tabId, {
+        mode: sameLogin ? "update" : "new",
+        itemId: sameLogin?.id || null,
+        site: key,
+        username,
+        password,
+    });
+    return { ok: true };
+}
+
+async function getPendingSave(tabId) {
+    const pending = await getPending(tabId);
+    if (!pending) return { ok: true, pending: null };
+    return {
+        ok: true,
+        pending: {
+            mode: pending.mode,
+            site: pending.site,
+            username: pending.username,
+        },
+    };
+}
+
+async function savePending(tabId) {
+    const pending = await getPending(tabId);
+    if (!pending) return { ok: false };
+    const unlocked = await getUnlockedVault();
+    if (!unlocked) return { ok: false, locked: true };
+    const { vault, key } = unlocked;
+    const now = Date.now();
+    let next;
+    if (
+        pending.mode === "update" &&
+        vault.items.some((i) => i.id === pending.itemId)
+    ) {
+        next = {
+            ...vault,
+            items: vault.items.map((i) =>
+                i.id === pending.itemId
+                    ? { ...i, password: pending.password, updatedAt: now }
+                    : i,
+            ),
+        };
+    } else {
+        const item = {
+            id: crypto.randomUUID(),
+            title: "",
+            notes: "",
+            site: pending.site,
+            username: pending.username,
+            password: pending.password,
+            createdAt: now,
+            updatedAt: now,
+        };
+        next = { ...vault, items: [item, ...vault.items] };
+    }
+    await saveVault(next, key);
+    await clearPending(tabId);
+    touchSession();
+    return { ok: true };
+}
+
+async function neverSave(tabId) {
+    const pending = await getPending(tabId);
+    if (pending) {
+        const settings = await loadSettings();
+        await saveSettings({
+            neverSaveSites: [
+                ...new Set([...settings.neverSaveSites, pending.site]),
+            ],
+        });
+    }
+    await clearPending(tabId);
+    return { ok: true };
 }

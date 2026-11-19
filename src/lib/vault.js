@@ -52,4 +52,5 @@ export async function saveVault(vault, key) {
     const record = await getData(VAULT_KEY);
     const encrypted = await encryptWithKey(JSON.stringify(vault), key);
     await setData(VAULT_KEY, { ...record, ...encrypted });
+    return encrypted.iv;
 }

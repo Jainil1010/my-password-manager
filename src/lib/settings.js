@@ -1,7 +1,12 @@
 import { getData, setData } from "./storage";
 
 const KEY = "settings";
-export const DEFAULT_SETTINGS = { autoLockMinutes: 5 };
+export const DEFAULT_SETTINGS = {
+    autoLockMinutes: 5,
+    inlineSuggestions: true,
+    offerToSave: true,
+    neverSaveSites: [],
+};
 
 export async function loadSettings() {
     return { ...DEFAULT_SETTINGS, ...(await getData(KEY)) };

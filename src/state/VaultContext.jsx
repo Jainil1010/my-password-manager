@@ -2,10 +2,12 @@ import {
     createContext,
     useCallback,
     useContext,
+    useEffect,
     useMemo,
+    useRef,
     useState,
 } from "react";
-import { saveVault } from "../lib/vault";
+import { openVaultWithKey, saveVault } from "../lib/vault";
 import { touchSession } from "../lib/session";
 
 const VaultContext = createContext(null);
@@ -16,15 +18,28 @@ export function useVault() {
 
 export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
     const [vault, setVault] = useState(initialVault);
+    const lastIv = useRef(null);
 
     const persist = useCallback(
         async (next) => {
-            await saveVault(next, cryptoKey);
+            lastIv.current = await saveVault(next, cryptoKey);
             setVault(next);
             touchSession();
         },
         [cryptoKey],
     );
+
+    useEffect(() => {
+        function onChanged(changes, area) {
+            if (area !== "local" || !changes.vault) return;
+            if (changes.vault.newValue?.iv === lastIv.current) return;
+            openVaultWithKey(cryptoKey)
+                .then(setVault)
+                .catch(() => {});
+        }
+        chrome.storage.onChanged.addListener(onChanged);
+        return () => chrome.storage.onChanged.removeListener(onChanged);
+    }, [cryptoKey]);
 
     const api = useMemo(
         () => ({
