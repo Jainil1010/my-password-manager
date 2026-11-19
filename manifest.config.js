@@ -18,5 +18,14 @@ export default defineManifest(({ mode }) => {
         content_scripts: [
             { matches, js: ["src/content/inline.js"], run_at: "document_idle" },
         ],
+        commands: {
+            "fill-login": {
+                suggested_key: {
+                    default: "Ctrl+Shift+F",
+                    mac: "Command+Shift+F",
+                },
+                description: "Fill the login on this page",
+            },
+        },
     };
 });

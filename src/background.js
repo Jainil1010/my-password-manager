@@ -19,6 +19,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     return true;
 });
 
+chrome.commands.onCommand.addListener(async (command, tab) => {
+    if (command === "fill-login") await fillBestMatch(tab);
+});
+
 async function handleMessage(msg, sender) {
     if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0)
         return { ok: false };
@@ -69,4 +73,37 @@ async function openPopup() {
     } catch {
         return { ok: false };
     }
+}
+
+async function fillBestMatch(tab) {
+    if (!tab?.id || !tab.url || !isSecurePage(tab.url)) return flash("X");
+    const unlocked = await getUnlockedVault();
+    if (!unlocked) {
+        await openPopup();
+        return;
+    }
+    const matches = matchItems(unlocked.vault.items, tab.url);
+    if (matches.length === 0) return flash("0");
+    if (matches.length > 1) {
+        await openPopup();
+        return;
+    }
+    const item = matches[0];
+    try {
+        const result = await chrome.tabs.sendMessage(tab.id, {
+            type: "FILL_CREDENTIALS",
+            username: item.username || "",
+            password: item.password,
+        });
+        flash(result?.ok ? "OK" : "!");
+    } catch {
+        flash("!");
+    }
+    touchSession();
+}
+
+async function flash(text) {
+    await chrome.action.setBadgeBackgroundColor({ color: "#6d4aff" });
+    await chrome.action.setBadgeText({ text });
+    setTimeout(() => chrome.action.setBadgeText({ text: "" }), 2000);
 }
