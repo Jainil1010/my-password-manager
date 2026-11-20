@@ -4,6 +4,7 @@ import ItemDetailScreen from "./screens/ItemDetailScreen";
 import ItemFormScreen from "./screens/ItemFormScreen";
 import GeneratorScreen from "./screens/GeneratorScreen";
 import SettingsScreen from "./screens/SettingsScreen";
+import NeverSaveScreen from "./screens/NeverSaveScreen";
 
 export default function AppRoutes() {
     return (
@@ -15,6 +16,7 @@ export default function AppRoutes() {
             <Route path="/edit/:id" element={<ItemFormScreen />} />
             <Route path="/generator" element={<GeneratorScreen />} />
             <Route path="/settings" element={<SettingsScreen />} />
+            <Route path="/never-save" element={<NeverSaveScreen />} />
         </Routes>
     );
 }

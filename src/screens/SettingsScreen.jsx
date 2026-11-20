@@ -65,7 +65,6 @@ export default function SettingsScreen() {
     const toast = useToast();
     const { lock } = useVault();
     const fileRef = useRef(null);
-    const [autoLock, setAutoLock] = useState(5);
     const [pendingFile, setPendingFile] = useState(null);
     const [eraseOpen, setEraseOpen] = useState(false);
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -162,9 +161,9 @@ export default function SettingsScreen() {
                     <Row
                         label="Never save list"
                         hint={`${settings.neverSaveSites.length} site(s). Tap to clear`}
-                        onClick={() =>
-                            settings.neverSaveSites.length > 0 &&
-                            setClearNeverOpen(true)
+                        onClick={() => navigate("/never-save")}
+                        right={
+                            <ChevronRight size={16} className="text-muted" />
                         }
                     />
                     <Row
