@@ -6,7 +6,7 @@ export default defineManifest(({ mode }) => {
     return {
         manifest_version: 3,
         name: "My Password Manager",
-        version: "1.2.0",
+        version: "1.2.1",
         description:
             "A simple password manager. Your data is encrypted and stays on your device.",
         action: { default_popup: "index.html" },

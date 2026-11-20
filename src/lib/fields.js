@@ -100,7 +100,8 @@ export function detectInlineFields() {
     if (pwFields.length > 1) return [];
     const pw = pwFields[0] || null;
     const user = findUsernameField(pw, { passive: true });
-    return [user, pw].filter(Boolean);
+    const field = user || pw;
+    return field ? [field] : [];
 }
 
 export function setFieldValue(input, value) {
