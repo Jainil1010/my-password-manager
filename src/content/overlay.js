@@ -34,6 +34,12 @@ const CSS = `
   .btn:hover { background: #3a3744; }
   .btn.primary { background: #6d4aff; color: #fff; }
   .btn.primary:hover { background: #8266ff; }
+  .gen { padding: 8px; }
+  .gen-label { color: #a09fae; font-size: 12px; }
+  .gen-pw { margin: 6px 0 10px; padding: 8px; border-radius: 8px; background: #16141c;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px;
+            word-break: break-all; }
+  .gen-actions { display: flex; gap: 6px; }
 `;
 
 const KEY_SVG = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"
@@ -69,6 +75,36 @@ export function buildNote(text) {
     note.className = "note";
     note.textContent = text;
     return note;
+}
+
+export function buildGeneratorCard({ password, onUse, onRegenerate }) {
+    const makeButton = (label, primary, handler) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = primary ? "btn primary" : "btn";
+        button.textContent = label;
+        button.addEventListener("mousedown", (e) => e.preventDefault());
+        button.addEventListener("click", (e) => {
+            if (e.isTrusted) handler();
+        });
+        return button;
+    };
+    const card = document.createElement("div");
+    card.className = "gen";
+    const label = document.createElement("div");
+    label.className = "gen-label";
+    label.textContent = "Strong password";
+    const pw = document.createElement("div");
+    pw.className = "gen-pw";
+    pw.textContent = password;
+    const actions = document.createElement("div");
+    actions.className = "gen-actions";
+    actions.append(
+        makeButton("Use password", true, onUse),
+        makeButton("Regenerate", false, onRegenerate),
+    );
+    card.append(label, pw, actions);
+    return card;
 }
 
 export function createOverlay() {

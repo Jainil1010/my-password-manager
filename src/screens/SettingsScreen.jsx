@@ -177,6 +177,41 @@ export default function SettingsScreen() {
                         }
                     />
                 </Group>
+                <Group title="Generated passwords">
+                    <Row
+                        label="Length"
+                        hint="Form password made in sign-up forms"
+                        right={
+                            <select
+                                value={settings.generatorLength}
+                                onChange={(e) =>
+                                    update({
+                                        generatorLength: Number(e.target.value),
+                                    })
+                                }
+                                className="rounded-lg bg-raised px-2 py-1.5 text-xs outline-none">
+                                {[12, 16, 20, 24, 32, 48].map((n) => (
+                                    <option key={n} value={n}>
+                                        {n} characters
+                                    </option>
+                                ))}
+                            </select>
+                        }
+                    />
+                    <Row
+                        label="Include symbols"
+                        hint="Turn off is a site rejects special characters"
+                        right={
+                            <Switch
+                                label="Include symbols"
+                                checked={settings.generatorSymbols}
+                                onChange={(v) =>
+                                    update({ generatorSymbols: v })
+                                }
+                            />
+                        }
+                    />
+                </Group>
                 <Group title="Tools">
                     <Row
                         icon={KeyRound}

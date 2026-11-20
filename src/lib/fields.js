@@ -3,6 +3,10 @@ const LOGIN_URL_HINT =
     /login|log-in|signin|sign-in|sign_in|auth|account|sso|identity|session/i;
 const POLL_MS = 300;
 const MAX_WAIT_MS = 120000;
+const SIGNUP_URL_HINT =
+    /sign-?up|register|registration|join|create-?account|new-?account|enroll/i;
+const autocompleteTokens = (el) =>
+    (el.getAttribute("autocomplete") || "").toLowerCase().split(/\s+/);
 
 export function isVisible(el) {
     const style = window.getComputedStyle(el);
@@ -68,15 +72,24 @@ export function findPasswordField() {
 export function findUsernameField(pwField, { passive = false } = {}) {
     if (pwField) {
         const scope = pwField.form || pwField.getRootNode();
-        let found = null;
-        for (const el of scope.querySelectorAll("input")) {
-            const isBefore =
+        const before = [...scope.querySelectorAll("input")].filter(
+            (el) =>
+                isUsable(el) &&
                 (el.compareDocumentPosition(pwField) &
                     Node.DOCUMENT_POSITION_FOLLOWING) !==
-                0;
-            if (isBefore && isUsable(el)) found = el;
-        }
-        return found;
+                    0,
+        );
+        const closest = (test) => [...before].reverse().find(test);
+        return (
+            closest((el) =>
+                autocompleteTokens(el).some(
+                    (t) => t === "username" || t === "email",
+                ),
+            ) ||
+            closest((el) => el.type === "email") ||
+            before[before.length - 1] ||
+            null
+        );
     }
     const all = queryAllDeep("input").filter(isUsable);
     const strong = all.find(autocompleteHasUsername);
@@ -166,4 +179,35 @@ export function fillCredentials(username, password) {
         }
     }, POLL_MS);
     return { ok: true, waiting: true, filled: first.filled || "nothing" };
+}
+
+export function findNewPasswordFields() {
+    const all = queryAllDeep('input[type="password"]').filter(
+        (el) => isVisible(el) && !el.disabled,
+    );
+    const explicit = all.filter((el) =>
+        autocompleteTokens(el).includes("new-password"),
+    );
+    if (explicit.length > 0) return explicit;
+    const notCurrent = all.filter(
+        (el) => !autocompleteTokens(el).includes("current-password"),
+    );
+    if (notCurrent.length === 3) return notCurrent.slice(1);
+    if (notCurrent.length >= 2) return notCurrent;
+    if (
+        notCurrent.length === 1 &&
+        SIGNUP_URL_HINT.test(`${location.hostname}${location.pathname}`)
+    )
+        return notCurrent;
+    return [];
+}
+
+export function detectInlineTarget() {
+    const newFields = findNewPasswordFields();
+    if (newFields.length > 0)
+        return { kind: "signup", field: newFields[0], newFields };
+    const pw = findPasswordField();
+    const user = findUsernameField(pw, { passive: true });
+    const field = user || pw;
+    return field ? { kind: "login", field } : null;
 }

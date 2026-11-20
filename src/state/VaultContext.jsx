@@ -45,7 +45,6 @@ export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
         () => ({
             items: vault.items,
             getItem: (id) => vault.items.find((i) => i.id === id) || null,
-
             async addItem(data) {
                 const now = Date.now();
                 const item = {
@@ -59,7 +58,6 @@ export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
                 await persist({ ...vault, items: [item, ...vault.items] });
                 return item;
             },
-
             async updateItem(id, data) {
                 await persist({
                     ...vault,
@@ -70,7 +68,6 @@ export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
                     ),
                 });
             },
-
             async deleteItem(id) {
                 await persist({
                     ...vault,
@@ -78,6 +75,18 @@ export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
                 });
             },
             lock: onLock,
+            generated: vault.generated || [],
+            async removeGenerated(id) {
+                await persist({
+                    ...vault,
+                    generated: (vault.generated || []).filter(
+                        (g) => g.id !== id,
+                    ),
+                });
+            },
+            async clearGenerated() {
+                await persist({ ...vault, generated: [] });
+            },
         }),
         [vault, persist, onLock],
     );

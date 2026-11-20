@@ -52,6 +52,10 @@ async function handleMessage(msg, sender) {
             return { ok: true };
         case "NEVER_SAVE":
             return neverSave(tabId);
+        case "GET_STATUS":
+            return getStatus();
+        case "GENERATED":
+            return recordGenerated(pageUrl, msg.password);
         default:
             return { ok: false };
     }
@@ -215,5 +219,32 @@ async function neverSave(tabId) {
         });
     }
     await clearPending(tabId);
+    return { ok: true };
+}
+
+async function getStatus() {
+    const unlocked = await getUnlockedVault();
+    return { ok: true, locked: !unlocked };
+}
+
+async function recordGenerated(pageUrl, password) {
+    if (
+        typeof password !== "string" ||
+        password.length === 0 ||
+        password.length > 128
+    )
+        return { ok: false };
+    const unlocked = await getUnlockedVault();
+    if (!unlocked) return { ok: false, locked: true };
+    const { vault, key } = unlocked;
+    const entry = {
+        id: crypto.randomUUID(),
+        site: siteKey(pageUrl),
+        password,
+        createdAt: Date.now(),
+    };
+    const generated = [entry, ...(vault.generated || [])].slice(0, 20);
+    await saveVault({ ...vault, generated }, key);
+    touchSession();
     return { ok: true };
 }

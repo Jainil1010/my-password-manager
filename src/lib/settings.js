@@ -6,6 +6,8 @@ export const DEFAULT_SETTINGS = {
     inlineSuggestions: true,
     offerToSave: true,
     neverSaveSites: [],
+    generatorLength: 20,
+    generatorSymbols: true,
 };
 
 export async function loadSettings() {

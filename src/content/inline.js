@@ -1,8 +1,18 @@
-import { fillCredentials, detectInlineFields } from "../lib/fields";
-import { createOverlay, buildRow, buildNote } from "./overlay";
+import {
+    fillCredentials,
+    detectInlineTarget,
+    setFieldValue,
+} from "../lib/fields";
+import {
+    createOverlay,
+    buildRow,
+    buildNote,
+    buildGeneratorCard,
+} from "./overlay";
 import { send } from "./messaging";
 import { loadSettings } from "../lib/settings";
 import { startCapture } from "./capture";
+import { generatePassword } from "../lib/generator";
 
 const isSecureHere = () =>
     location.protocol === "https:" || location.hostname === "localhost";
@@ -38,7 +48,7 @@ async function start() {
         }
     });
 
-    async function onIconClick(field) {
+    async function openSuggestions(field) {
         const o = getOverlay();
         o.openMenu(field, [buildNote("Loading...")]);
         const res = await send({ type: "GET_SUGGESTIONS" });
@@ -73,6 +83,65 @@ async function start() {
         );
     }
 
+    async function onIconClick(field) {
+        const target = detectInlineTarget();
+        if (!target) return;
+        if (target.kind === "signup")
+            return openGenerator(field, target.newFields);
+        return openSuggestions(field);
+    }
+
+    const makePassword = () =>
+        generatePassword({
+            length: settings.generatorLength,
+            symbols: settings.generatorSymbols,
+        });
+
+    async function openGenerator(field, newFields) {
+        const o = getOverlay();
+        const status = await send({ type: "GET_STATUS" });
+        if (!status?.ok)
+            return o.openMenu(field, [
+                buildNote("Password Manager is not available on this page."),
+            ]);
+        if (status.locked)
+            return o.openMenu(field, [
+                buildRow({
+                    name: "Unlock to generate a password",
+                    sub: "So we can save it for you",
+                    onSelect: unlock,
+                }),
+            ]);
+        let password = makePassword();
+        const show = () =>
+            o.openMenu(field, [
+                buildGeneratorCard({
+                    password,
+                    onRegenerate: () => {
+                        password = makePassword();
+                        show();
+                    },
+                    onUse: use,
+                }),
+            ]);
+
+        async function use() {
+            o.closeMenu();
+            const saved = await send({ type: "GENERATED", password });
+            if (!saved?.ok) {
+                return o.openMenu(field, [
+                    buildNote(
+                        "Could not store the password, so nothing was filled. Unlock the extension and try again.",
+                    ),
+                ]);
+            }
+            for (const input of newFields) {
+                if (input.isConnected) setFieldValue(input, password);
+            }
+        }
+        show();
+    }
+
     async function pick(itemId) {
         overlay.closeMenu();
         const creds = await send({ type: "GET_CREDENTIALS", itemId });
@@ -86,9 +155,9 @@ async function start() {
     }
 
     function scan() {
-        const fields = settings.inlineSuggestions ? detectInlineFields() : [];
-        if (fields.length === 0 && !overlay) return;
-        getOverlay().syncFields(fields, onIconClick);
+        const target = settings.inlineSuggestions ? detectInlineTarget() : null;
+        if (!target && !overlay) return;
+        getOverlay().syncFields(target ? [target.field] : [], onIconClick);
     }
 
     let scanScheduled = false;
