@@ -142,15 +142,19 @@ async function loginCaptured(pageUrl, tabId, msg) {
         return { ok: true };
     const unlocked = await getUnlockedVault();
     if (!unlocked) return { ok: true };
-    const sameLogin = matchItems(unlocked.vault.items, pageUrl).find(
+    const candidates = matchItems(unlocked.vault.items, pageUrl);
+    let sameLogin = candidates.find(
         (i) => (i.username || "").toLowerCase() === username.toLowerCase(),
     );
+    if (!sameLogin && !username && candidates.length === 1)
+        sameLogin = candidates[0];
+    if (!username && !sameLogin) return { ok: true };
     if (sameLogin && sameLogin.password === password) return { ok: true };
     await setPending(tabId, {
         mode: sameLogin ? "update" : "new",
         itemId: sameLogin?.id || null,
         site: key,
-        username,
+        username: username || sameLogin?.username || "",
         password,
     });
     return { ok: true };
@@ -176,19 +180,16 @@ async function savePending(tabId) {
     if (!unlocked) return { ok: false, locked: true };
     const { vault, key } = unlocked;
     const now = Date.now();
-    let next;
+    let items;
     if (
         pending.mode === "update" &&
         vault.items.some((i) => i.id === pending.itemId)
     ) {
-        next = {
-            ...vault,
-            items: vault.items.map((i) =>
-                i.id === pending.itemId
-                    ? { ...i, password: pending.password, updatedAt: now }
-                    : i,
-            ),
-        };
+        items = vault.items.map((i) =>
+            i.id === pending.itemId
+                ? { ...i, password: pending.password, updatedAt: now }
+                : i,
+        );
     } else {
         const item = {
             id: crypto.randomUUID(),
@@ -200,8 +201,12 @@ async function savePending(tabId) {
             createdAt: now,
             updatedAt: now,
         };
-        next = { ...vault, items: [item, ...vault.items] };
+        items = [item, ...vault.items];
     }
+    const generated = (vault.generated || []).filter(
+        (g) => g.password !== pending.password,
+    );
+    const next = { ...vault, items, generated };
     await saveVault(next, key);
     await clearPending(tabId);
     touchSession();

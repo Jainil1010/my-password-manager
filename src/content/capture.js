@@ -28,6 +28,11 @@ export function startCapture({ getOverlay, getSettings }) {
             (el) => isVisible(el) && el.value,
         );
         const pw = filled[filled.length - 1] || null;
+        if (
+            filled.length >= 2 &&
+            filled[filled.length - 1].value !== filled[filled.length - 2].value
+        )
+            return;
         if (!pw) {
             const user = findUsernameField(null, { passive: true });
             if (user?.value) rememberedUsername = user.value.trim();
