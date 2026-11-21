@@ -116,6 +116,14 @@ export default function SettingsScreen() {
             <main className="flex-1 space-y-4 overflow-y-auto p-3">
                 <Group title="Security">
                     <Row
+                        icon={KeyRound}
+                        label="Change master password"
+                        onClick={() => navigate("/change-password")}
+                        right={
+                            <ChevronRight size={16} className="text-muted" />
+                        }
+                    />
+                    <Row
                         label="Auto-lock"
                         hint="Lock after no activity"
                         right={

@@ -7,7 +7,11 @@ import {
     useRef,
     useState,
 } from "react";
-import { openVaultWithKey, saveVault } from "../lib/vault";
+import {
+    changeMasterPassword as changeVaultPassword,
+    openVaultWithKey,
+    saveVault,
+} from "../lib/vault";
 import { touchSession } from "../lib/session";
 
 const VaultContext = createContext(null);
@@ -16,7 +20,13 @@ export function useVault() {
     return useContext(VaultContext);
 }
 
-export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
+export function VaultProvider({
+    initialVault,
+    cryptoKey,
+    onLock,
+    onKeyChanged,
+    children,
+}) {
     const [vault, setVault] = useState(initialVault);
     const lastIv = useRef(null);
 
@@ -86,6 +96,13 @@ export function VaultProvider({ initialVault, cryptoKey, onLock, children }) {
             },
             async clearGenerated() {
                 await persist({ ...vault, generated: [] });
+            },
+            async changeMasterPassword(currentPassword, newPassword) {
+                const { key } = await changeVaultPassword(
+                    currentPassword,
+                    newPassword,
+                );
+                await onKeyChanged(key);
             },
         }),
         [vault, persist, onLock],

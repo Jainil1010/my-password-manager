@@ -49,6 +49,11 @@ export default function App() {
         setStatus("unlock");
     }
 
+    async function handleKeyChanged(key) {
+        await setSession(key);
+        setCurrentSession((s) => ({ ...s, key }));
+    }
+
     return (
         <ToastProvider>
             {status === "loading" && (
@@ -66,7 +71,8 @@ export default function App() {
                 <VaultProvider
                     initialVault={currentSession.vault}
                     cryptoKey={currentSession.key}
-                    onLock={handleLock}>
+                    onLock={handleLock}
+                    onKeyChanged={handleKeyChanged}>
                     <MemoryRouter>
                         <AppRoutes />
                     </MemoryRouter>
