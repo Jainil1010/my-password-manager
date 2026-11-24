@@ -6,11 +6,18 @@ export default defineManifest(({ mode }) => {
     return {
         manifest_version: 3,
         name: "My Password Manager",
-        version: "1.2.1",
+        version: "1.3.0",
         description:
             "A simple password manager. Your data is encrypted and stays on your device.",
         action: { default_popup: "index.html" },
-        permissions: ["storage", "alarms", "idle", "activeTab"],
+        permissions: [
+            "storage",
+            "alarms",
+            "idle",
+            "activeTab",
+            "offscreen",
+            "clipboardWrite",
+        ],
         background: { service_worker: "src/background.js", type: "module" },
         content_scripts: [
             { matches, js: ["src/content/inline.js"], run_at: "document_idle" },

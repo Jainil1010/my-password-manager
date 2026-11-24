@@ -140,6 +140,27 @@ export default function SettingsScreen() {
                         }
                     />
                     <Row icon={Lock} label="Lock now" onClick={lock} />
+                    <Row
+                        label="Clear clipboard"
+                        hint="After copying a password"
+                        right={
+                            <select
+                                value={settings.clipboardClearSeconds}
+                                onChange={(e) =>
+                                    update({
+                                        clipboardClearSeconds: Number(
+                                            e.target.value,
+                                        ),
+                                    })
+                                }
+                                className="rounded-lg bg-raised px-2 py-1.5 text-xs outline-none">
+                                <option value={0}>Never</option>
+                                <option value={30}>30 seconds</option>
+                                <option value={60}>1 minute</option>
+                                <option value={120}>2 minutes</option>
+                            </select>
+                        }
+                    />
                 </Group>
                 <Group title="Autofill">
                     <Row

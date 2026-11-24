@@ -7,8 +7,15 @@ import { clearPending, getPending, setPending } from "./lib/pending";
 import { loadSettings, saveSettings } from "./lib/settings";
 import { saveVault } from "./lib/vault";
 
-chrome.alarms.onAlarm.addListener((alarm) => {
-    if (alarm.name === ALARM_NAME) chrome.storage.session.remove(SESSION_KEY);
+const CLIPBOARD_ALARM = "clear-clipboard";
+const MIN_ALARM_SECONDS = 30;
+
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+    if (alarm.name === ALARM_NAME) {
+        await chrome.storage.session.remove(SESSION_KEY);
+        await flushClipboardIfPending();
+    }
+    if (alarm.name === CLIPBOARD_ALARM) await clearClipboardNow();
 });
 
 chrome.idle.onStateChanged.addListener((state) => {
@@ -29,8 +36,10 @@ chrome.commands.onCommand.addListener(async (command, tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => clearPending(tabId));
 
 async function handleMessage(msg, sender) {
-    if (sender.id !== chrome.runtime.id || !sender.tab || sender.frameId !== 0)
-        return { ok: false };
+    if (sender.id !== chrome.runtime.id) return { ok: false };
+    if (sender.url?.startsWith(chrome.runtime.getURL("")))
+        return handleExtensionPageMessage(msg);
+    if (!sender.tab || sender.frameId !== 0) return { ok: false };
     const pageUrl = sender.url;
     if (!pageUrl || !isSecurePage(pageUrl)) return { ok: false };
     const tabId = sender.tab.id;
@@ -59,6 +68,57 @@ async function handleMessage(msg, sender) {
         default:
             return { ok: false };
     }
+}
+
+async function handleExtensionPageMessage(msg) {
+    switch (msg?.type) {
+        case "CLIPBOARD_COPIED":
+            await scheduleClipboardClear(Number(msg.seconds) || 0);
+            return { ok: true };
+        case "CLIPBOARD_FLUSH":
+            await flushClipboardIfPending();
+            return { ok: true };
+        default:
+            return { ok: false };
+    }
+}
+
+async function scheduleClipboardClear(seconds) {
+    if (!seconds) return;
+    await chrome.alarms.create(CLIPBOARD_ALARM, {
+        delayInMinutes: Math.max(seconds, MIN_ALARM_SECONDS) / 60,
+    });
+}
+
+async function ensureOffscreen() {
+    const existing = await chrome.runtime.getContexts({
+        contextTypes: ["OFFSCREEN_DOCUMENT"],
+    });
+    if (existing.length > 0) return;
+    await chrome.offscreen.createDocument({
+        url: "offscreen.html",
+        reasons: ["CLIPBOARD"],
+        justification:
+            "Clear a copied password from the clipboard after a delay",
+    });
+}
+
+async function clearClipboardNow() {
+    await chrome.alarms.clear(CLIPBOARD_ALARM);
+    try {
+        await ensureOffscreen();
+        await chrome.runtime.sendMessage({
+            target: "offscreen",
+            type: "CLEAR_CLIPBOARD",
+        });
+    } catch {
+    } finally {
+        await chrome.offscreen.closeDocument().catch(() => {});
+    }
+}
+
+async function flushClipboardIfPending() {
+    if (await chrome.alarms.get(CLIPBOARD_ALARM)) await clearClipboardNow();
 }
 
 async function getSuggestions(pageUrl) {

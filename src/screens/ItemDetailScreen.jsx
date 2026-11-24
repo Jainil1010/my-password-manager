@@ -12,6 +12,7 @@ import { Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import Avatar from "../ui/Avatar";
 import Button from "../ui/Button";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import { copyText, copySecret } from "../lib/clipboard";
 
 function Field({ label, children, actions }) {
     return (
@@ -39,8 +40,8 @@ export default function ItemDetailScreen() {
     const canFill = tab?.url && matchItems([item], tab.url).length > 0;
     const websiteUrl = toUrl(item.site);
 
-    async function copy(text, label) {
-        await navigator.clipboard.writeText(text);
+    async function copy(text, label, secret = false) {
+        await (secret ? copySecret(text) : copyText(text))
         toast(`${label} copied`);
     }
 
@@ -122,7 +123,7 @@ export default function ItemDetailScreen() {
                             </IconButton>
                             <IconButton
                                 label="Copy password"
-                                onClick={() => copy(item.password, "Password")}>
+                                onClick={() => copy(item.password, "Password", true)}>
                                 <Copy size={17} />
                             </IconButton>
                         </>

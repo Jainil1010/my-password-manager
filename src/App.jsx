@@ -44,6 +44,7 @@ export default function App() {
     }
 
     async function handleLock() {
+        chrome.runtime.sendMessage({ type: "CLIPBOARD_FLUSH" }).catch(() => {});
         await removeSession();
         setCurrentSession(null);
         setStatus("unlock");
